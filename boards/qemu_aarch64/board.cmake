@@ -1,0 +1,1 @@
+include(${CMAKE_SOURCE_DIR}/arch/aarch64/arch.cmake)
