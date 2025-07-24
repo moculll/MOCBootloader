@@ -8,11 +8,10 @@ set(CMAKE_OBJCOPY ${TOOLCHAIN_PREFIX}-objcopy)
 set(CMAKE_STRIP ${TOOLCHAIN_PREFIX}-strip)
 set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}-ld)
 
-set(CMAKE_C_FLAGS "-ffreestanding  -fno-strict-aliasing -Wall ")
+set(CMAKE_C_FLAGS "-ffreestanding -fno-strict-aliasing -Wall")
 set(CMAKE_CXX_FLAGS "-ffreestanding -fno-exceptions -fno-rtti -Wall")
-set(LINK_FLAGS "-Wl,-Map=output.map -nostartfiles -lnosys --gc-sections -T${CMAKE_SOURCE_DIR}/arch/aarch64/link.ld")
-set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/arch/aarch64/link.ld --entry=_Reset -Wl,--gc-sections")
+set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/arch/aarch64/link.ld --entry=_Reset -Wl,--gc-sections -Wl,-Map=${CMAKE_BINARY_DIR}/output.map")
 file(GLOB_RECURSE STARTUP_FILE
     ${CMAKE_SOURCE_DIR}/arch/aarch64/startup.S
+    ${CMAKE_SOURCE_DIR}/arch/aarch64/syscalls.cpp
 )
-

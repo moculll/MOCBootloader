@@ -25,7 +25,7 @@ endforeach()
 
 include(${BOARD_DIR}/board.cmake)
 
-
+add_subdirectory(coroutine)
 
 add_subdirectory(boards)
 add_subdirectory(driver)

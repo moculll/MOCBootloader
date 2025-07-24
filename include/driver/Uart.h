@@ -28,14 +28,22 @@ public:
         }
     };
     
-    virtual int init(uint8_t bus, UartConfig &config);
+    virtual int init(uint8_t bus, UartConfig &config) = 0;
 
-    virtual int write(uint8_t bus, char *data, uint32_t length);
+    virtual int write(uint8_t bus, const char *data, uint32_t length) = 0;
+    virtual bool rxReady() = 0;
+    virtual bool txReady() = 0;
+    virtual char read() = 0;
 
     static Uart *instance();
+
+    Uart() = default;
+    Uart(Uart &) = delete;
+    Uart(Uart &&) = delete;
+
 private:
     
-
+    
 };
 
 

@@ -8,7 +8,7 @@ endif()
 
 
 macro(add_executable TARGET_NAME)
-    _add_executable(${TARGET_NAME}.elf ${ARGN} ${STARTUP_FILE} ${BOARD_IMPL_FILE})
+    _add_executable(${TARGET_NAME}.elf ${ARGN} ${SYSCALL_FILE} ${STARTUP_FILE})
     target_link_libraries(Uart PRIVATE boardImpl)
     target_link_libraries(${TARGET_NAME}.elf PUBLIC Uart)
 endmacro()
