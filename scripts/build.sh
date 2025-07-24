@@ -7,8 +7,6 @@ if [ ! -z "$1" ]; then
   BOARD=$1
 fi
 
-mkdir -p $BUILD_DIR
-cd $BUILD_DIR
+cmake -S . -B build -G Ninja -DBOARD=$BOARD -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build
 
-cmake .. -DBOARD=$BOARD
-make -j$(nproc)

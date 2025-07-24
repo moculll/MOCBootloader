@@ -1,5 +1,7 @@
-.section .text
-.global _start
-_start:
+.section .text.startup
+.global _Reset
+_Reset:
+    ldr x30, =stack_top	// setup stack
+    mov sp, x30
     bl main
-1:  b 1b
+    b .

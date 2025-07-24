@@ -1,18 +1,14 @@
 #include <stdio.h>
-volatile unsigned int *UART0_DR = (unsigned int *)0x09000000;
-
-void uart_putc(char c) {
-    *UART0_DR = (unsigned int)c;
-}
-
-void uart_puts(const char *str) {
-    while (*str) {
-        uart_putc(*str++);
-    }
-}
-
+#include <driver/Uart.h>
+#include <string.h>
 int main(int argc, char *argv[])
 {
-    uart_puts("Welcome to MOCBootloader!\r\n");
+    char buffer[64];
+    memcpy(buffer, "Welcome to MOCBootloader!\r\n", 29);
+    MOCBootloader::Driver::Uart::UartConfig config;
+    
+    MOCBootloader::Driver::Uart::instance()->init(0, config);
+
+    MOCBootloader::Driver::Uart::instance()->write(0, buffer, 29);
     return 0;
 }
