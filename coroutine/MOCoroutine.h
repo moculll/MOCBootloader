@@ -177,7 +177,7 @@ public:
         return instance;
     }
 private:
-    Scheduler() : currentCoroutine(nullptr), lastScheduled(nullptr) {}
+    Scheduler() : currentCoroutine(nullptr), lastScheduled(coroutines.end()) {}
 
     Coroutine* findNextRunnable();
     Coroutine *currentCoroutine;

@@ -7,7 +7,10 @@
 
 extern char _heap_start;
 extern char _heap_end;
+extern char _stack_top;
 static char *heap_ptr = &_heap_start;
+
+extern "C" void __sync_synchronize() {}
 
 extern "C"
 void* _sbrk(ptrdiff_t incr) {
@@ -15,7 +18,6 @@ void* _sbrk(ptrdiff_t incr) {
 
     if (heap_ptr + incr > &_heap_end) {
         errno = ENOMEM;
-        MOCBootloader::Driver::Uart::instance()->write(0, "out of memory\r\n", 16);
         return (void*)-1;
     }
 
@@ -26,7 +28,7 @@ void* _sbrk(ptrdiff_t incr) {
 extern "C"
 int _write(int fd, char* ptr, int len) {
     if (fd == STDOUT_FILENO || fd == STDERR_FILENO) {
-        MOCBootloader::Driver::Uart::instance()->write(0, ptr, len);
+        MOCBootloader::Driver::Uart::instance().write(0, ptr, len);
         return len;
     }
     errno = EBADF;

@@ -37,7 +37,7 @@ void Scheduler::yield()
         currentCoroutine->state = Coroutine::State::SUSPENDED;
         prevCoroutine = currentCoroutine;
     }
-
+    
     Coroutine* next = findNextRunnable();
     if (!next) {
         printf("no coroutine to yield.\r\n");
@@ -97,6 +97,7 @@ void Scheduler::exitEntry()
         currentCoroutine->state = Coroutine::State::FINISHED;
         printf("%s finished, remove coroutine.\r\n", currentCoroutine->tag.c_str());
         coroutines.remove(currentCoroutine);
+        printf("removed.\r\n");
         currentCoroutine = nullptr;
         yield();
 

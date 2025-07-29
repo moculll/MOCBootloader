@@ -10,7 +10,7 @@ set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}-ld)
 
 set(CMAKE_C_FLAGS "-ffreestanding -fno-strict-aliasing -Wall")
 set(CMAKE_CXX_FLAGS "-ffreestanding -fno-exceptions -fno-rtti -Wall")
-set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/arch/aarch64/link.ld --entry=_Reset -Wl,--gc-sections -Wl,-Map=${CMAKE_BINARY_DIR}/output.map")
+set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/arch/aarch64/link.ld -Wl,--gc-sections -Wl,-Map=${CMAKE_BINARY_DIR}/output.map")
 file(GLOB_RECURSE STARTUP_FILE
     ${CMAKE_SOURCE_DIR}/arch/aarch64/startup.S
     ${CMAKE_SOURCE_DIR}/arch/aarch64/syscalls.cpp

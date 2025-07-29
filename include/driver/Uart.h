@@ -35,7 +35,7 @@ public:
     virtual bool txReady() = 0;
     virtual char read() = 0;
 
-    static Uart *instance();
+    static Uart &instance();
 
     Uart() = default;
     Uart(Uart &) = delete;
