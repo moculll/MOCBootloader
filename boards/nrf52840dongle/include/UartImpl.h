@@ -25,10 +25,10 @@ public:
         return static_cast<bool>(!(*UART0_FR & (1 << 4)));
     }
 
-    static UartImpl *_instance()
+    static UartImpl &_instance()
     {
         static UartImpl instance;
-        return &instance;
+        return instance;
     }
 private:
 

@@ -6,6 +6,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/vendor/nordic)
 add_definitions(
     -DNRF52840_XXAA
 )
+
 target_compile_definitions(NRFX_LIB PRIVATE 
     NRF52840_XXAA
     NRFX_UARTE_ENABLED=1
@@ -13,7 +14,7 @@ target_compile_definitions(NRFX_LIB PRIVATE
     NRFX_CLOCK_ENABLED=1
     NRFX_POWER_ENABLED=1
 )
-
+target_include_directories(NRFX_LIB PRIVATE ${BOARD_DIR}/include)
 add_library(boardImpl
     ${BOARD_DIR}/Board.cpp
     ${BOARD_DIR}/impl/UartImpl.cpp

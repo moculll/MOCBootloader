@@ -20,9 +20,8 @@ target_include_directories(NRFX_LIB PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/drivers/src/prs
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/hal
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/soc
-    ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/templates
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/mdk
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmsis/Include
+    ${CMAKE_SOURCE_DIR}/vendor/cmsis/Include
 )
 
 
@@ -34,8 +33,7 @@ target_include_directories(NRFX_LIB INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/drivers/src/prs
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/hal
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/soc
-    ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/templates
     ${CMAKE_CURRENT_SOURCE_DIR}/nrfx/mdk
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmsis/Include
+    ${CMAKE_SOURCE_DIR}/vendor/cmsis/Include
 
 )
