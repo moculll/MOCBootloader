@@ -8,9 +8,9 @@ namespace MOCBootloader {
 namespace Driver {
 
 
-Uart *Uart::instance()
+Uart &Uart::instance()
 {
-    return static_cast<Uart *>(UartImpl::_instance());
+    return static_cast<Uart &>(UartImpl::_instance());
 }
 
 

@@ -13,40 +13,81 @@ extern "C" void MOCoroutineSwitchImpl(void *from, void *to) __attribute__((noinl
 extern "C" void MOCoroutineSaveContextImpl(void *save) __attribute__((noinline));
 extern "C" void MOCoroutineRestoreContextImpl(void *restore) __attribute__((noinline));
 
+enum class ArchType {
+    AARCH64,
+    ARM,
+};
+
 /* aarch64 register */
-struct Context {
+template<ArchType>
+struct Context;
+
+template<>
+struct Context<ArchType::AARCH64> {
     /* x18 */
-    uint64_t pr;
+    void *pr;
     /* x19-x28 */
-    uint64_t callee[10];
+    void *callee[10];
     /* x29 */
-    uint64_t fp;
+    void *fp;
     /* x30 */
-    uint64_t lr;
-    uint64_t sp;
-    uint64_t jump_to;
-    uint64_t reg;
+    void *lr;
+    void *sp;
+    void *entry;
+    void *reg;
     /* d8-d15 */
-    uint64_t fpu[8];
+    void *fpu[8];
+
+    void init(void *stackTop, void *entryFunc, void *entryArg, void *exitFunc)
+    {
+        uint8_t *bp = reinterpret_cast<uint8_t *>(stackTop);
+        bp -= (uintptr_t)bp % 16;
+        sp = bp - 16;
+        fp = stackTop;
+        lr = exitFunc;
+        entry = entryFunc;
+        reg = entryArg;
+    }
+
+
+    Context()
+    {
+        clear();
+    }
+
+    void clear()
+    {
+        memset(this, 0, sizeof(*this));
+    }
+
+};
+
+template<>
+struct Context<ArchType::ARM> {
+    /* r4-r11 */
+    void *callee[8];
+    void *sp;
+    void *lr;
+    void *pc;
+    void *entry;
+    void *reg;
+    /* s16-s31 */
+    void * fpu[15];
+    void * fpscr;
+
+    void init(void *stackTop, void *entry, void *entryArg, void *exit)
+    {
+        uint8_t *bp = reinterpret_cast<uint8_t *>(stackTop);
+        bp -= (uintptr_t)bp % 8;
+        sp = bp - 8;
+        pc = entry;
+        lr = exit;
+        entry = entry;
+        reg = entryArg;
+    }
 
     void print(const std::string &tag) {
-        printf("=== %s ===\n", tag.c_str());
         
-        printf("x18:  0x%016lx\n", pr);
-        for (int i = 0; i < static_cast<int>(sizeof(callee) / sizeof(callee[0])); ++i) {
-            printf("x%d:  0x%016lx\n", 19 + i, callee[i]);
-        }
-        
-        printf("fp(x29): 0x%016lx\n", fp);
-        printf("lr(x30): 0x%016lx\n", lr);
-        printf("sp:     0x%016lx\n", sp);
-        printf("jump_to:0x%016lx\n", jump_to);
-        printf("reg:0x%016lx\n", reg);
-        for (int i = 0; i < 8; ++i) {
-            printf("d%d:    0x%016lx\n", 8 + i, fpu[i]);
-        }
-        
-        printf("=========================\n");
     }
 
     Context()
@@ -77,9 +118,9 @@ public:
         delete stack;
     }
 
-    uint64_t stackTop()
+    void *stackTop()
     {
-        return reinterpret_cast<uint64_t>(stack + size);
+        return reinterpret_cast<void *>(stack + size);
     }
 private:
 
@@ -135,8 +176,12 @@ private:
     const std::string &tag;
     State state = State::READY;
     
-    
-    Context context;
+#if __AARCH64
+    Context<ArchType::AARCH64> context;
+#elif __ARM
+    Context<ArchType::ARM> context;
+#endif
+
 
     using StackPtr = std::variant<
         std::unique_ptr<Stack>,
@@ -177,14 +222,19 @@ public:
         return instance;
     }
 private:
-    Scheduler() : currentCoroutine(nullptr), lastScheduled(nullptr) {}
+    Scheduler() : currentCoroutine(nullptr), lastScheduled(coroutines.end()) {}
 
     Coroutine* findNextRunnable();
     Coroutine *currentCoroutine;
     /* std::vector<Coroutine *> coroutines; */
     std::forward_list<Coroutine *> coroutines;
     std::forward_list<Coroutine *>::iterator lastScheduled;
-    Context mainContext;
+
+#if __AARCH64
+    Context<ArchType::AARCH64> mainContext;
+#elif __ARM
+    Context<ArchType::ARM> mainContext;
+#endif
 };
 
 
