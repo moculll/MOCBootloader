@@ -1,350 +1,252 @@
-    .syntax unified
-    .arch armv7e-m
-    .text
-    .thumb
-    .globl  ResetHandler
-    .type   ResetHandler, %function
-ResetHandler:
-    ldr sp, =_stack_top
+/* File: startup_ARMCM4.S
+ * Purpose: startup file for Cortex-M4 devices. Should use with
+ *   GCC for ARM Embedded Processors
+ *   Arm Toolchain for Embedded
+ * Version: V2.1
+ * Date: 20 January 2025
+ *
+ * Copyright (c) 2011-2025 ARM LIMITED
 
-    ldr r1, =__etext
-    ldr r2, =_data_start
-    ldr r3, =__bss_start
+   All rights reserved.
+   Redistribution and use in source and binary forms, with or without
+   modification, are permitted provided that the following conditions are met:
+   - Redistributions of source code must retain the above copyright
+     notice, this list of conditions and the following disclaimer.
+   - Redistributions in binary form must reproduce the above copyright
+     notice, this list of conditions and the following disclaimer in the
+     documentation and/or other materials provided with the distribution.
+   - Neither the name of ARM nor the names of its contributors may be used
+     to endorse or promote products derived from this software without
+     specific prior written permission.
+   *
+   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+   ARE DISCLAIMED. IN NO EVENT SHALL COPYRIGHT HOLDERS AND CONTRIBUTORS BE
+   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+   POSSIBILITY OF SUCH DAMAGE.
+   ---------------------------------------------------------------------------*/
+	.syntax	unified
+	.arch	armv7e-m
 
-    subs r3, r3, r2
-    ble .L_loop1_done
+	.section .stack
+	.align	3
+#ifdef __STACK_SIZE
+	.equ	Stack_Size, __STACK_SIZE
+#else
+	.equ	Stack_Size, 0xc00
+#endif
+	.globl	__StackTop
+	.globl	__StackLimit
+__StackLimit:
+	.space	Stack_Size
+	.size	__StackLimit, . - __StackLimit
+__StackTop:
+	.size	__StackTop, . - __StackTop
+
+	.section .heap
+	.align	3
+#ifdef __HEAP_SIZE
+	.equ	Heap_Size, __HEAP_SIZE
+#else
+	.equ	Heap_Size, 0
+#endif
+	.globl	__HeapBase
+	.globl	__HeapLimit
+__HeapBase:
+	.if	Heap_Size
+	.space	Heap_Size
+	.endif
+	.size	__HeapBase, . - __HeapBase
+__HeapLimit:
+	.size	__HeapLimit, . - __HeapLimit
+
+	.section .isr_vector, "ax"
+	.align	2
+	.globl	__isr_vector
+__isr_vector:
+	.long	__StackTop            /* Top of Stack */
+	.long	Reset_Handler         /* Reset Handler */
+	.long	NMI_Handler           /* NMI Handler */
+	.long	HardFault_Handler     /* Hard Fault Handler */
+	.long	MemManage_Handler     /* MPU Fault Handler */
+	.long	BusFault_Handler      /* Bus Fault Handler */
+	.long	UsageFault_Handler    /* Usage Fault Handler */
+	.long	0                     /* Reserved */
+	.long	0                     /* Reserved */
+	.long	0                     /* Reserved */
+	.long	0                     /* Reserved */
+	.long	SVC_Handler           /* SVCall Handler */
+	.long	DebugMon_Handler      /* Debug Monitor Handler */
+	.long	0                     /* Reserved */
+	.long	PendSV_Handler        /* PendSV Handler */
+	.long	SysTick_Handler       /* SysTick Handler */
+
+	/* External interrupts */
+	.long	Default_Handler
+
+	.size	__isr_vector, . - __isr_vector
+
+	.text
+	.thumb
+	.thumb_func
+	.align	2
+	.globl	Reset_Handler
+	.type	Reset_Handler, %function
+Reset_Handler:
+/*  Firstly it copies data from read only memory to RAM. There are two schemes
+ *  to copy. One can copy more than one sections. Another can only copy
+ *  one section.  The former scheme needs more instructions and read-only
+ *  data to implement than the latter.
+ *  Macro __STARTUP_COPY_MULTIPLE is used to choose between two schemes.  */
+
+#ifdef __STARTUP_COPY_MULTIPLE
+/*  Multiple sections scheme.
+ *
+ *  Between symbol address __copy_table_start__ and __copy_table_end__,
+ *  there are array of triplets, each of which specify:
+ *    offset 0: LMA of start of a section to copy from
+ *    offset 4: VMA of start of a section to copy to
+ *    offset 8: size of the section to copy. Must be multiply of 4
+ *
+ *  All addresses must be aligned to 4 bytes boundary.
+ */
+	ldr	r4, =__copy_table_start__
+	ldr	r5, =__copy_table_end__
+
+.L_loop0:
+	cmp	r4, r5
+	bge	.L_loop0_done
+	ldr	r1, [r4]
+	ldr	r2, [r4, #4]
+	ldr	r3, [r4, #8]
+
+.L_loop0_0:
+	subs	r3, #4
+	ittt	ge
+	ldrge	r0, [r1, r3]
+	strge	r0, [r2, r3]
+	bge	.L_loop0_0
+
+	adds	r4, #12
+	b	.L_loop0
+
+.L_loop0_done:
+#else
+/*  Single section scheme.
+ *
+ *  The ranges of copy from/to are specified by following symbols
+ *    __etext: LMA of start of the section to copy from. Usually end of text
+ *    __data_start__: VMA of start of the section to copy to
+ *    __data_end__: VMA of end of the section to copy to
+ *
+ *  All addresses must be aligned to 4 bytes boundary.
+ */
+	ldr	r1, =__etext
+	ldr	r2, =__data_start__
+	ldr	r3, =__data_end__
 
 .L_loop1:
-    subs r3, r3, #4
-    ldr r0, [r1,r3]
-    str r0, [r2,r3]
-    bgt .L_loop1
+	cmp	r2, r3
+	ittt	lt
+	ldrlt	r0, [r1], #4
+	strlt	r0, [r2], #4
+	blt	.L_loop1
+#endif /*__STARTUP_COPY_MULTIPLE */
 
-.L_loop1_done:
-    ldr r1, =__bss_start
-    ldr r2, =__bss_end
+/*  This part of work usually is done in C library startup code. Otherwise,
+ *  define this macro to enable it in this startup.
+ *
+ *  There are two schemes too. One can clear multiple BSS sections. Another
+ *  can only clear one section. The former is more size expensive than the
+ *  latter.
+ *
+ *  Define macro __STARTUP_CLEAR_BSS_MULTIPLE to choose the former.
+ *  Otherwise efine macro __STARTUP_CLEAR_BSS to choose the later.
+ */
+#ifdef __STARTUP_CLEAR_BSS_MULTIPLE
+/*  Multiple sections scheme.
+ *
+ *  Between symbol address __copy_table_start__ and __copy_table_end__,
+ *  there are array of tuples specifying:
+ *    offset 0: Start of a BSS section
+ *    offset 4: Size of this BSS section. Must be multiply of 4
+ */
+	ldr	r3, =__zero_table_start__
+	ldr	r4, =__zero_table_end__
 
-    movs r0, 0
+.L_loop2:
+	cmp	r3, r4
+	bge	.L_loop2_done
+	ldr	r1, [r3]
+	ldr	r2, [r3, #4]
+	movs	r0, 0
 
-    subs r2, r2, r1
-    ble .L_loop3_done
+.L_loop2_0:
+	subs	r2, #4
+	itt	ge
+	strge	r0, [r1, r2]
+	bge	.L_loop2_0
 
+	adds	r3, #8
+	b	.L_loop2
+.L_loop2_done:
+#elif defined (__STARTUP_CLEAR_BSS)
+/*  Single BSS section scheme.
+ *
+ *  The BSS section is specified by following symbols
+ *    __bss_start__: start of the BSS section.
+ *    __bss_end__: end of the BSS section.
+ *
+ *  Both addresses must be aligned to 4 bytes boundary.
+ */
+	ldr	r1, =__bss_start__
+	ldr	r2, =__bss_end__
+
+	movs	r0, 0
 .L_loop3:
-    subs r2, r2, #4
-    str r0, [r1, r2]
-    bgt .L_loop3
-.L_loop3_done:
-    bl __libc_init_array
-    bl main
-    b .
+	cmp	r1, r2
+	itt	lt
+	strlt	r0, [r1], #4
+	blt	.L_loop3
+#endif /* __STARTUP_CLEAR_BSS_MULTIPLE || __STARTUP_CLEAR_BSS */
+	bl __libc_init_array
+	bl	main
+	b .
 
-.section	.isr_vector,"a",%progbits
-	.type	g_pfnVectors, %object
-	.size	g_pfnVectors, .-g_pfnVectors
+	.pool
+	.size	Reset_Handler, . - Reset_Handler
 
-
-g_pfnVectors:
-	.word	_stack_top
-	.word	ResetHandler
-	.word	NMI_Handler
-	.word	HardFault_Handler
-	.word	MemManage_Handler
-	.word	BusFault_Handler
-	.word	UsageFault_Handler
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	SVC_Handler
-	.word	DebugMon_Handler
-	.word	0
-	.word	PendSV_Handler
-	.word	SysTick_Handler
-	.word	WWDG_IRQHandler
-	.word	PVD_PVM_IRQHandler
-	.word	TAMP_STAMP_IRQHandler
-	.word	RTC_WKUP_IRQHandler
-	.word	FLASH_IRQHandler
-	.word	RCC_IRQHandler
-	.word	EXTI0_IRQHandler
-	.word	EXTI1_IRQHandler
-	.word	EXTI2_IRQHandler
-	.word	EXTI3_IRQHandler
-	.word	EXTI4_IRQHandler
-	.word	DMA1_Channel1_IRQHandler
-	.word	DMA1_Channel2_IRQHandler
-	.word	DMA1_Channel3_IRQHandler
-	.word	DMA1_Channel4_IRQHandler
-	.word	DMA1_Channel5_IRQHandler
-	.word	DMA1_Channel6_IRQHandler
-	.word	DMA1_Channel7_IRQHandler
-	.word	ADC1_2_IRQHandler
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	EXTI9_5_IRQHandler
-	.word	TIM1_BRK_TIM15_IRQHandler
-	.word	TIM1_UP_TIM16_IRQHandler
-	.word	TIM1_TRG_COM_IRQHandler
-	.word	TIM1_CC_IRQHandler
-	.word	TIM2_IRQHandler
-	.word	0
-	.word	0
-	.word	I2C1_EV_IRQHandler
-	.word	I2C1_ER_IRQHandler
-	.word	I2C2_EV_IRQHandler
-	.word	I2C2_ER_IRQHandler
-	.word	SPI1_IRQHandler
-	.word	SPI2_IRQHandler
-	.word	USART1_IRQHandler
-	.word	USART2_IRQHandler
-	.word	USART3_IRQHandler
-	.word	EXTI15_10_IRQHandler
-	.word	RTC_Alarm_IRQHandler
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	0
-	.word	TIM6_IRQHandler
-	.word	0
-	.word	DMA2_Channel1_IRQHandler
-	.word	DMA2_Channel2_IRQHandler
-	.word	DMA2_Channel3_IRQHandler
-	.word	DMA2_Channel4_IRQHandler
-	.word	DMA2_Channel5_IRQHandler
-	.word	0
-	.word	0
-	.word	0
-	.word	COMP_IRQHandler
-	.word	LPTIM1_IRQHandler
-	.word	LPTIM2_IRQHandler
-	.word	0
-	.word	DMA2_Channel6_IRQHandler
-	.word	DMA2_Channel7_IRQHandler
-	.word	LPUART1_IRQHandler
-	.word	QUADSPI_IRQHandler
-	.word	I2C3_EV_IRQHandler
-	.word	I2C3_ER_IRQHandler
-	.word	0
-	.word	0
-	.word	0
-	.word	TSC_IRQHandler
-	.word	0
-	.word	0
-	.word	RNG_IRQHandler
-	.word	FPU_IRQHandler
-	.word	CRS_IRQHandler
-
-    .section	.text.Default_Handler,"ax",%progbits
+	.align	1
+	.thumb_func
+	.weak	Default_Handler
+	.type	Default_Handler, %function
 Default_Handler:
-Infinite_Loop:
-	b	Infinite_Loop
-	.size	Default_Handler, .-Default_Handler
-/*******************************************************************************
-*
-* Provide weak aliases for each Exception handler to the Default_Handler.
-* As they are weak aliases, any function with the same name will override
-* this definition.
-*
-*******************************************************************************/
+	b	.
+	.size	Default_Handler, . - Default_Handler
 
-  .weak	NMI_Handler
-	.thumb_set NMI_Handler,Default_Handler
+/*    Macro to define default handlers. Default handler
+ *    will be weak symbol and just dead loops. They can be
+ *    overwritten by other handlers */
+	.macro	def_irq_handler	handler_name
+	.weak	\handler_name
+	.set	\handler_name, Default_Handler
+	.endm
 
-  .weak	HardFault_Handler
-	.thumb_set HardFault_Handler,Default_Handler
+	def_irq_handler	NMI_Handler
+	def_irq_handler	HardFault_Handler
+	def_irq_handler	MemManage_Handler
+	def_irq_handler	BusFault_Handler
+	def_irq_handler	UsageFault_Handler
+	def_irq_handler	SVC_Handler
+	def_irq_handler	DebugMon_Handler
+	def_irq_handler	PendSV_Handler
+	def_irq_handler	SysTick_Handler
+	def_irq_handler	DEF_IRQHandler
 
-  .weak	MemManage_Handler
-	.thumb_set MemManage_Handler,Default_Handler
-
-  .weak	BusFault_Handler
-	.thumb_set BusFault_Handler,Default_Handler
-
-	.weak	UsageFault_Handler
-	.thumb_set UsageFault_Handler,Default_Handler
-
-	.weak	SVC_Handler
-	.thumb_set SVC_Handler,Default_Handler
-
-	.weak	DebugMon_Handler
-	.thumb_set DebugMon_Handler,Default_Handler
-
-	.weak	PendSV_Handler
-	.thumb_set PendSV_Handler,Default_Handler
-
-	.weak	SysTick_Handler
-	.thumb_set SysTick_Handler,Default_Handler
-
-	.weak	WWDG_IRQHandler
-	.thumb_set WWDG_IRQHandler,Default_Handler
-
-	.weak	PVD_PVM_IRQHandler
-	.thumb_set PVD_PVM_IRQHandler,Default_Handler
-
-	.weak	TAMP_STAMP_IRQHandler
-	.thumb_set TAMP_STAMP_IRQHandler,Default_Handler
-
-	.weak	RTC_WKUP_IRQHandler
-	.thumb_set RTC_WKUP_IRQHandler,Default_Handler
-
-	.weak	FLASH_IRQHandler
-	.thumb_set FLASH_IRQHandler,Default_Handler
-
-	.weak	RCC_IRQHandler
-	.thumb_set RCC_IRQHandler,Default_Handler
-
-	.weak	EXTI0_IRQHandler
-	.thumb_set EXTI0_IRQHandler,Default_Handler
-
-	.weak	EXTI1_IRQHandler
-	.thumb_set EXTI1_IRQHandler,Default_Handler
-
-	.weak	EXTI2_IRQHandler
-	.thumb_set EXTI2_IRQHandler,Default_Handler
-
-	.weak	EXTI3_IRQHandler
-	.thumb_set EXTI3_IRQHandler,Default_Handler
-
-	.weak	EXTI4_IRQHandler
-	.thumb_set EXTI4_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel1_IRQHandler
-	.thumb_set DMA1_Channel1_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel2_IRQHandler
-	.thumb_set DMA1_Channel2_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel3_IRQHandler
-	.thumb_set DMA1_Channel3_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel4_IRQHandler
-	.thumb_set DMA1_Channel4_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel5_IRQHandler
-	.thumb_set DMA1_Channel5_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel6_IRQHandler
-	.thumb_set DMA1_Channel6_IRQHandler,Default_Handler
-
-	.weak	DMA1_Channel7_IRQHandler
-	.thumb_set DMA1_Channel7_IRQHandler,Default_Handler
-
-	.weak	ADC1_2_IRQHandler
-	.thumb_set ADC1_2_IRQHandler,Default_Handler
-
-	.weak	EXTI9_5_IRQHandler
-	.thumb_set EXTI9_5_IRQHandler,Default_Handler
-
-	.weak	TIM1_BRK_TIM15_IRQHandler
-	.thumb_set TIM1_BRK_TIM15_IRQHandler,Default_Handler
-
-	.weak	TIM1_UP_TIM16_IRQHandler
-	.thumb_set TIM1_UP_TIM16_IRQHandler,Default_Handler
-
-	.weak	TIM1_TRG_COM_IRQHandler
-	.thumb_set TIM1_TRG_COM_IRQHandler,Default_Handler
-
-	.weak	TIM1_CC_IRQHandler
-	.thumb_set TIM1_CC_IRQHandler,Default_Handler
-
-	.weak	TIM2_IRQHandler
-	.thumb_set TIM2_IRQHandler,Default_Handler
-
-	.weak	I2C1_EV_IRQHandler
-	.thumb_set I2C1_EV_IRQHandler,Default_Handler
-
-	.weak	I2C1_ER_IRQHandler
-	.thumb_set I2C1_ER_IRQHandler,Default_Handler
-
-	.weak	I2C2_EV_IRQHandler
-	.thumb_set I2C2_EV_IRQHandler,Default_Handler
-
-	.weak	I2C2_ER_IRQHandler
-	.thumb_set I2C2_ER_IRQHandler,Default_Handler
-
-	.weak	SPI1_IRQHandler
-	.thumb_set SPI1_IRQHandler,Default_Handler
-
-	.weak	SPI2_IRQHandler
-	.thumb_set SPI2_IRQHandler,Default_Handler
-
-	.weak	USART1_IRQHandler
-	.thumb_set USART1_IRQHandler,Default_Handler
-
-	.weak	USART2_IRQHandler
-	.thumb_set USART2_IRQHandler,Default_Handler
-
-	.weak	USART3_IRQHandler
-	.thumb_set USART3_IRQHandler,Default_Handler
-
-	.weak	EXTI15_10_IRQHandler
-	.thumb_set EXTI15_10_IRQHandler,Default_Handler
-
-	.weak	RTC_Alarm_IRQHandler
-	.thumb_set RTC_Alarm_IRQHandler,Default_Handler
-
-	.weak	TIM6_IRQHandler
-	.thumb_set TIM6_IRQHandler,Default_Handler
-
-	.weak	DMA2_Channel1_IRQHandler
-	.thumb_set DMA2_Channel1_IRQHandler,Default_Handler
-
-	.weak	DMA2_Channel2_IRQHandler
-	.thumb_set DMA2_Channel2_IRQHandler,Default_Handler
-
-	.weak	DMA2_Channel3_IRQHandler
-	.thumb_set DMA2_Channel3_IRQHandler,Default_Handler
-
-	.weak	DMA2_Channel4_IRQHandler
-	.thumb_set DMA2_Channel4_IRQHandler,Default_Handler
-
-	.weak	DMA2_Channel5_IRQHandler
-	.thumb_set DMA2_Channel5_IRQHandler,Default_Handler
-
-	.weak	COMP_IRQHandler
-	.thumb_set COMP_IRQHandler,Default_Handler
-	
-	.weak	LPTIM1_IRQHandler
-	.thumb_set LPTIM1_IRQHandler,Default_Handler
-	
-	.weak	LPTIM2_IRQHandler
-	.thumb_set LPTIM2_IRQHandler,Default_Handler	
-	
-	.weak	DMA2_Channel6_IRQHandler
-	.thumb_set DMA2_Channel6_IRQHandler,Default_Handler	
-	
-	.weak	DMA2_Channel7_IRQHandler
-	.thumb_set DMA2_Channel7_IRQHandler,Default_Handler	
-	
-	.weak	LPUART1_IRQHandler
-	.thumb_set LPUART1_IRQHandler,Default_Handler	
-	
-	.weak	QUADSPI_IRQHandler
-	.thumb_set QUADSPI_IRQHandler,Default_Handler	
-	
-	.weak	I2C3_EV_IRQHandler
-	.thumb_set I2C3_EV_IRQHandler,Default_Handler	
-	
-	.weak	I2C3_ER_IRQHandler
-	.thumb_set I2C3_ER_IRQHandler,Default_Handler
-	
-	.weak	TSC_IRQHandler
-	.thumb_set TSC_IRQHandler,Default_Handler
-	
-	.weak	RNG_IRQHandler
-	.thumb_set RNG_IRQHandler,Default_Handler
-	
-	.weak	FPU_IRQHandler
-	.thumb_set FPU_IRQHandler,Default_Handler
-	
-	.weak	CRS_IRQHandler
-	.thumb_set CRS_IRQHandler,Default_Handler
+	.end

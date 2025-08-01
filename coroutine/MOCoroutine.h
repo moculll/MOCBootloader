@@ -66,28 +66,30 @@ template<>
 struct Context<ArchType::ARM> {
     /* r4-r11 */
     void *callee[8];
+    /* s16-s31 */
+    void * fpu[16];
+
     void *sp;
     void *lr;
     void *pc;
+    
     void *entry;
     void *reg;
-    /* s16-s31 */
-    void * fpu[15];
-    void * fpscr;
 
-    void init(void *stackTop, void *entry, void *entryArg, void *exit)
+    void init(void *stackTop, void *entryFunc, void *entryArg, void *exitFunc)
     {
         uint8_t *bp = reinterpret_cast<uint8_t *>(stackTop);
         bp -= (uintptr_t)bp % 8;
-        sp = bp - 8;
-        pc = entry;
-        lr = exit;
-        entry = entry;
-        reg = entryArg;
+        this->sp = bp - 8;
+        this->pc = entryFunc;
+        this->lr = exitFunc;
+        this->entry = entryFunc;
+        this->reg = entryArg;
+        /* printf("registered entry: %p, arg: %p\r\n", entry, reg); */
     }
 
     void print(const std::string &tag) {
-        
+        /* printf("sp: %p, lr: %p, pc: %p, entry: %p, reg: %p\r\n", sp, lr, pc, entry, reg); */
     }
 
     Context()

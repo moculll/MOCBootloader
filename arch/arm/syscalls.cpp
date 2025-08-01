@@ -5,8 +5,8 @@
 #include <stddef.h>
 #include <driver/Uart.h>
 
+extern char __HeapLimit;
 extern char _heap_start;
-extern char _heap_end;
 extern char _stack_top;
 static char *heap_ptr = &_heap_start;
 
@@ -16,7 +16,7 @@ extern "C"
 void* _sbrk(ptrdiff_t incr) {
     char *prev = heap_ptr;
 
-    if (heap_ptr + incr > &_heap_end) {
+    if (heap_ptr + incr > &__HeapLimit) {
         errno = ENOMEM;
         return (void*)-1;
     }
@@ -41,10 +41,7 @@ int _read(int file, char* ptr, int len) {
     return 0;
 }
 
-extern "C"
-int _close(int file) {
-    return -1;
-}
+
 
 extern "C"
 int _fstat(int file, struct stat* st) {
@@ -60,6 +57,11 @@ int _isatty(int file) {
 extern "C"
 int _lseek(int file, int ptr, int dir) {
     return 0;
+}
+
+extern "C"
+int _close(int file) {
+    return -1;
 }
 
 extern "C"

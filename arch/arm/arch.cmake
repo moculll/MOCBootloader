@@ -10,7 +10,7 @@ set(CMAKE_LINKER ${TOOLCHAIN_PREFIX}-ld)
 
 set(CMAKE_C_FLAGS "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -ffreestanding -fno-strict-aliasing -Wall")
 set(CMAKE_CXX_FLAGS "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -ffreestanding -fno-exceptions -fno-rtti -Wall")
-
+set(CMAKE_ASM_FLAGS "-mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -ffreestanding -fno-strict-aliasing -Wall")
 set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_SOURCE_DIR}/arch/arm/link.ld -Wl,--gc-sections -Wl,-Map=${CMAKE_BINARY_DIR}/output.map")
 file(GLOB_RECURSE STARTUP_FILE
     ${CMAKE_SOURCE_DIR}/arch/arm/startup.S
